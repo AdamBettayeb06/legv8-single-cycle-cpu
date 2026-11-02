@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LEGv8 Single-Cycle Datapath</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #bf4520;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .frame { max-width: 1220px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 1180px; display: block; }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Architecture · LEGv8 · Patterson &amp; Hennessy</p>
+    <h1>LEGv8 single-cycle datapath</h1>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1180 1040" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="legv8-datapath-title legv8-datapath-desc">
+        <title id="legv8-datapath-title">LEGv8 single-cycle datapath</title>
+        <desc id="legv8-datapath-desc">The LEGv8 single-cycle datapath with its control unit: the PC fetches an instruction, whose fields select registers, drive the main control and ALU control, and feed the sign-extender; the ALU result addresses data memory, the MemtoReg mux picks the write-back value, and Branch, UncondBranch and Zero choose between PC+4 and the branch target.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+        <!-- ============ DATAPATH WIRES (muted, solid) ============ -->
+        <g fill="none" stroke="#4f5d75" stroke-width="1.2">
+          <!-- PC → instruction memory, PC → Add(+4), PC → branch adder -->
+          <path d="M116,620 H164" marker-end="url(#arrow)"/>
+          <path d="M136,620 V80 Q136,72 144,72 H200" marker-end="url(#arrow)"/>
+          <path d="M136,200 H760" marker-end="url(#arrow)"/>
+          <path d="M180,144 H200" marker-end="url(#arrow)"/>
+          <!-- PC+4 → PC mux (0) -->
+          <path d="M256,108 H1000" marker-end="url(#arrow)"/>
+          <!-- Shift left 2 → branch adder; branch target → PC mux (1) -->
+          <path d="M684,272 H760" marker-end="url(#arrow)"/>
+          <path d="M816,236 H1000" marker-end="url(#arrow)"/>
+          <!-- PC mux → PC (loop over the top) -->
+          <path d="M1024,172 H1040 Q1048,172 1048,164 V36 Q1048,28 1040,28 H40 Q32,28 32,36 V612 Q32,620 40,620 H60" marker-end="url(#arrow)"/>
+
+          <!-- Instruction memory → instruction bus -->
+          <path d="M300,620 H328"/>
+          <line x1="328" y1="408" x2="328" y2="848"/>
+          <!-- [31-21] → Control (hops the offset climb) -->
+          <path d="M328,408 Q328,400 336,400 H628 a8,8 0 0,1 16,0 H660" marker-end="url(#arrow)"/>
+          <!-- [9-5] → Read reg 1 -->
+          <path d="M328,556 H452" marker-end="url(#arrow)"/>
+          <!-- [20-16] / [4-0] → Reg2Loc mux -->
+          <path d="M328,588 H388" marker-end="url(#arrow)"/>
+          <path d="M328,652 H388" marker-end="url(#arrow)"/>
+          <!-- [4-0] → Write register -->
+          <path d="M328,684 H452" marker-end="url(#arrow)"/>
+          <!-- [31-0] → Sign-extend (hops write-back) -->
+          <path d="M328,792 H420 a8,8 0 0,1 16,0 H476" marker-end="url(#arrow)"/>
+          <!-- [31-21] → ALU control (hops write-back and read-data-2 branch) -->
+          <path d="M328,848 Q328,856 336,856 H420 a8,8 0 0,1 16,0 H612 a8,8 0 0,1 16,0 H688" marker-end="url(#arrow)"/>
+
+          <!-- Reg2Loc mux → Read reg 2 -->
+          <path d="M412,620 H452" marker-end="url(#arrow)"/>
+          <!-- Read data 1 → ALU -->
+          <path d="M600,564 H720" marker-end="url(#arrow)"/>
+          <!-- Read data 2 → ALUSrc mux (0) -->
+          <path d="M600,692 H660" marker-end="url(#arrow)"/>
+          <!-- Read data 2 → data memory write data (hops sign-extend output) -->
+          <path d="M620,692 V784 a8,8 0 0,0 0,16 V892 Q620,900 628,900 H912 Q920,900 920,892 V744" marker-end="url(#arrow)"/>
+          <!-- Sign-extend → shift left 2 (hops read data 2 and read data 1) -->
+          <path d="M576,792 H628 Q636,792 636,784 V700 a8,8 0 0,0 0,-16 V572 a8,8 0 0,0 0,-16 V292" marker-end="url(#arrow)"/>
+          <!-- Sign-extend → ALUSrc mux (1) -->
+          <path d="M636,724 H660" marker-end="url(#arrow)"/>
+          <!-- ALUSrc mux → ALU -->
+          <path d="M684,708 H720" marker-end="url(#arrow)"/>
+          <!-- ALU control → ALU -->
+          <path d="M760,832 V716" marker-end="url(#arrow)"/>
+          <!-- ALU result → data memory address -->
+          <path d="M800,644 H900" marker-end="url(#arrow)"/>
+          <!-- ALU result bypass → MemtoReg mux (0) -->
+          <path d="M872,644 V768 Q872,776 880,776 H912 a8,8 0 0,1 16,0 H1056 Q1064,776 1064,768 V712 Q1064,704 1072,704 H1088" marker-end="url(#arrow)"/>
+          <!-- Read data → MemtoReg mux (1) -->
+          <path d="M1040,664 H1088" marker-end="url(#arrow)"/>
+          <!-- Write-back → register file write data -->
+          <path d="M1112,684 H1128 Q1136,684 1136,692 V908 Q1136,916 1128,916 H436 Q428,916 428,908 V724 Q428,716 436,716 H452" marker-end="url(#arrow)"/>
+          <!-- Zero → AND gate -->
+          <path d="M800,592 H836 Q844,592 844,584 V384 Q844,376 852,376 H868" marker-end="url(#arrow)"/>
+        </g>
+
+        <!-- ============ CONTROL SIGNALS (link blue, dashed) ============ -->
+        <g fill="none" stroke="#2e5aa8" stroke-width="1" stroke-dasharray="4,3">
+          <path d="M660,440 H644 a8,8 0 0,0 -16,0 H408 Q400,440 400,448 V548 a8,8 0 0,0 0,16 V572" marker-end="url(#arrow-link)"/>
+          <path d="M660,464 H644 a8,8 0 0,0 -16,0 H536 Q528,464 528,472 V528" marker-end="url(#arrow-link)"/>
+          <path d="M672,488 V556 a8,8 0 0,0 0,16 V676" marker-end="url(#arrow-link)"/>
+          <path d="M704,488 V556 a8,8 0 0,0 0,16 V700 a8,8 0 0,0 0,16 V832" marker-end="url(#arrow-link)"/>
+          <path d="M820,360 H868" marker-end="url(#arrow-link)"/>
+          <path d="M804,336 V320 Q804,312 812,312 H944" marker-end="url(#arrow-link)"/>
+          <path d="M820,400 H836 a8,8 0 0,1 16,0 H1092 Q1100,400 1100,408 V644" marker-end="url(#arrow-link)"/>
+          <path d="M820,424 H836 a8,8 0 0,1 16,0 H992 Q1000,424 1000,432 V584" marker-end="url(#arrow-link)"/>
+          <path d="M820,448 H836 a8,8 0 0,1 16,0 H932 Q940,448 940,456 V584" marker-end="url(#arrow-link)"/>
+          <path d="M904,368 H916 Q924,368 924,360 V344 Q924,336 932,336 H944" marker-end="url(#arrow-link)"/>
+          <path d="M980,324 H1004 Q1012,324 1012,316 V256" marker-end="url(#arrow-link)"/>
+        </g>
+
+        <!-- ============ JUNCTION DOTS ============ -->
+        <g fill="#4f5d75">
+          <circle cx="136" cy="620" r="3"/>
+          <circle cx="136" cy="200" r="3"/>
+          <circle cx="328" cy="620" r="3"/>
+          <circle cx="328" cy="556" r="3"/>
+          <circle cx="328" cy="588" r="3"/>
+          <circle cx="328" cy="652" r="3"/>
+          <circle cx="328" cy="684" r="3"/>
+          <circle cx="328" cy="792" r="3"/>
+          <circle cx="620" cy="692" r="3"/>
+          <circle cx="636" cy="724" r="3"/>
+          <circle cx="872" cy="644" r="3"/>
+        </g>
+
+        <!-- ============ ARROW LABELS (masked) ============ -->
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#5a6580" text-anchor="middle" letter-spacing="0.06em">
+          <rect x="338" y="382" width="40" height="12" rx="2" fill="#f5f5f5"/><text x="358" y="391">[31-21]</text>
+          <rect x="338" y="538" width="40" height="12" rx="2" fill="#f5f5f5"/><text x="358" y="547">[9-5]</text>
+          <rect x="338" y="570" width="40" height="12" rx="2" fill="#f5f5f5"/><text x="358" y="579">[20-16]</text>
+          <rect x="338" y="634" width="40" height="12" rx="2" fill="#f5f5f5"/><text x="358" y="643">[4-0]</text>
+          <rect x="338" y="666" width="40" height="12" rx="2" fill="#f5f5f5"/><text x="358" y="675">[4-0]</text>
+          <rect x="338" y="774" width="40" height="12" rx="2" fill="#f5f5f5"/><text x="358" y="783">[31-0]</text>
+          <rect x="338" y="838" width="40" height="12" rx="2" fill="#f5f5f5"/><text x="358" y="847">[31-21]</text>
+          <rect x="584" y="90" width="32" height="12" rx="2" fill="#f5f5f5"/><text x="600" y="99">PC+4</text>
+          <rect x="872" y="218" width="72" height="12" rx="2" fill="#f5f5f5"/><text x="908" y="227">BRANCH TARGET</text>
+          <rect x="1020" y="280" width="32" height="12" rx="2" fill="#f5f5f5"/><text x="1036" y="289" fill="#2e5aa8">PCSRC</text>
+          <rect x="852" y="500" width="24" height="12" rx="2" fill="#f5f5f5"/><text x="864" y="509">ZERO</text>
+          <rect x="968" y="898" width="64" height="12" rx="2" fill="#f5f5f5"/><text x="1000" y="907">WRITE BACK</text>
+          <text x="172" y="148" font-size="9" fill="#2d3142">4</text>
+        </g>
+
+        <!-- ============ NODES ============ -->
+        <!-- PC -->
+        <rect x="60" y="588" width="56" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="60" y="588" width="56" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="88" y="624" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">PC</text>
+
+        <!-- Instruction memory -->
+        <rect x="164" y="540" width="136" height="160" rx="6" fill="#f5f5f5"/>
+        <rect x="164" y="540" width="136" height="160" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="232" y="576" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Instruction</text>
+        <text x="232" y="592" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">memory</text>
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#5a6580">
+          <text x="170" y="623">Read address</text>
+          <text x="294" y="623" text-anchor="end">Instruction</text>
+          <text x="232" y="680" text-anchor="middle" font-size="9" fill="#4f5d75">[31-0] · read-only</text>
+        </g>
+
+        <!-- Add (+4) -->
+        <path d="M200,48 L256,78 L256,138 L200,168 L200,124 L216,108 L200,92 Z" fill="#f5f5f5"/>
+        <path d="M200,48 L256,78 L256,138 L200,168 L200,124 L216,108 L200,92 Z" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="236" y="112" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Add</text>
+
+        <!-- Branch adder -->
+        <path d="M760,176 L816,206 L816,266 L760,296 L760,252 L776,236 L760,220 Z" fill="#f5f5f5"/>
+        <path d="M760,176 L816,206 L816,266 L760,296 L760,252 L776,236 L760,220 Z" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="796" y="240" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Add</text>
+
+        <!-- Shift left 2 -->
+        <rect x="588" y="252" width="96" height="40" rx="6" fill="#f5f5f5"/>
+        <rect x="588" y="252" width="96" height="40" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="636" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Shift left 2</text>
+
+        <!-- Control (focal) -->
+        <rect x="660" y="336" width="160" height="152" rx="6" fill="#f5f5f5"/>
+        <rect x="660" y="336" width="160" height="152" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+        <text x="740" y="424" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Control</text>
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#2e5aa8">
+          <text x="668" y="443">Reg2Loc</text>
+          <text x="668" y="467">RegWrite</text>
+          <text x="668" y="480">ALUSrc</text>
+          <text x="710" y="480">ALUOp</text>
+          <text x="812" y="350" text-anchor="end">UncondBranch</text>
+          <text x="812" y="363" text-anchor="end">Branch</text>
+          <text x="812" y="403" text-anchor="end">MemtoReg</text>
+          <text x="812" y="427" text-anchor="end">MemRead</text>
+          <text x="812" y="451" text-anchor="end">MemWrite</text>
+        </g>
+
+        <!-- AND / OR branch logic -->
+        <path d="M868,352 H888 A16,16 0 0,1 888,384 H868 Z" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <path d="M940,304 Q964,304 980,324 Q964,344 940,344 Q950,324 940,304 Z" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+
+        <!-- Muxes -->
+        <g fill="#ffffff" stroke="#2d3142" stroke-width="1">
+          <rect x="1000" y="88" width="24" height="168" rx="12"/>
+          <rect x="388" y="572" width="24" height="96" rx="12"/>
+          <rect x="660" y="676" width="24" height="64" rx="12"/>
+          <rect x="1088" y="644" width="24" height="80" rx="12"/>
+        </g>
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#2d3142" text-anchor="middle">
+          <text x="1012" y="111">0</text><text x="1012" y="239">1</text>
+          <text x="400" y="591">0</text><text x="400" y="655">1</text>
+          <text x="672" y="695">0</text><text x="672" y="727">1</text>
+          <text x="1100" y="667">1</text><text x="1100" y="707">0</text>
+        </g>
+
+        <!-- Register file -->
+        <rect x="452" y="528" width="148" height="208" rx="6" fill="#f5f5f5"/>
+        <rect x="452" y="528" width="148" height="208" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="526" y="648" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Registers</text>
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#5a6580">
+          <text x="458" y="559">Read reg 1</text>
+          <text x="458" y="623">Read reg 2</text>
+          <text x="458" y="687">Write reg</text>
+          <text x="458" y="719">Write data</text>
+          <text x="594" y="567" text-anchor="end">Read data 1</text>
+          <text x="594" y="695" text-anchor="end">Read data 2</text>
+          <text x="526" y="662" text-anchor="middle" font-size="9" fill="#4f5d75">X0–X31 · 64-bit</text>
+        </g>
+
+        <!-- Sign-extend -->
+        <rect x="476" y="768" width="100" height="48" rx="6" fill="#f5f5f5"/>
+        <rect x="476" y="768" width="100" height="48" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="526" y="789" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Sign-extend</text>
+        <text x="526" y="805" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">32 → 64</text>
+
+        <!-- ALU (focal) -->
+        <path d="M720,536 L800,576 L800,696 L720,736 L720,656 L736,636 L720,616 Z" fill="#f5f5f5"/>
+        <path d="M720,536 L800,576 L800,696 L720,736 L720,656 L736,636 L720,616 Z" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+        <text x="758" y="692" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">ALU</text>
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#5a6580" text-anchor="end">
+          <text x="794" y="595">Zero</text>
+          <text x="794" y="647">Result</text>
+        </g>
+
+        <!-- ALU control -->
+        <rect x="688" y="832" width="120" height="48" rx="6" fill="#f5f5f5"/>
+        <rect x="688" y="832" width="120" height="48" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="748" y="860" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">ALU control</text>
+
+        <!-- Data memory -->
+        <rect x="900" y="584" width="140" height="160" rx="6" fill="#f5f5f5"/>
+        <rect x="900" y="584" width="140" height="160" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="970" y="612" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Data memory</text>
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#5a6580">
+          <text x="906" y="647">Address</text>
+          <text x="1034" y="667" text-anchor="end">Read data</text>
+          <text x="906" y="736">Write data</text>
+        </g>
+
+        <!-- ============ STAGE STRIP ============ -->
+        <g stroke="rgba(45,49,66,0.25)" stroke-width="0.8">
+          <line x1="32" y1="944" x2="1148" y2="944"/>
+          <line x1="32" y1="940" x2="32" y2="948"/>
+          <line x1="316" y1="940" x2="316" y2="948"/>
+          <line x1="628" y1="940" x2="628" y2="948"/>
+          <line x1="860" y1="940" x2="860" y2="948"/>
+          <line x1="1060" y1="940" x2="1060" y2="948"/>
+          <line x1="1148" y1="940" x2="1148" y2="948"/>
+        </g>
+        <g font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#5a6580" text-anchor="middle" letter-spacing="0.14em">
+          <text x="174" y="962">IF · FETCH</text>
+          <text x="472" y="962">ID · DECODE + REG READ</text>
+          <text x="744" y="962">EX · EXECUTE</text>
+          <text x="960" y="962">MEM</text>
+          <text x="1104" y="962">WB</text>
+        </g>
+
+        <!-- ============ LEGEND ============ -->
+        <line x1="32" y1="984" x2="1148" y2="984" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="32" y="1012" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+        <g font-family="'Geist', system-ui, sans-serif" font-size="10" fill="#4f5d75">
+          <line x1="112" y1="1009" x2="148" y2="1009" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+          <text x="156" y="1012">Datapath wire</text>
+
+          <line x1="260" y1="1009" x2="296" y2="1009" stroke="#2e5aa8" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-link)"/>
+          <text x="304" y="1012">Control signal</text>
+
+          <circle cx="416" cy="1009" r="3" fill="#4f5d75"/>
+          <text x="428" y="1012">Junction (connected)</text>
+
+          <path d="M552,1009 H564 a8,8 0 0,1 16,0 H592" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+          <line x1="572" y1="996" x2="572" y2="1020" stroke="#4f5d75" stroke-width="1.2"/>
+          <text x="600" y="1012">Hop (not connected)</text>
+
+          <rect x="724" y="998" width="12" height="24" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+          <text x="744" y="1012">2:1 mux, input 0 / 1</text>
+
+          <rect x="876" y="1001" width="20" height="16" rx="3" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+          <text x="904" y="1012">Focal: ALU, Control</text>
+
+          <rect x="1028" y="1001" width="20" height="16" rx="3" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+          <text x="1056" y="1012">State element</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
